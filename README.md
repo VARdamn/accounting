@@ -22,4 +22,4 @@ Telegram bot for writing expenses and getting statistics about.
 
 8. See list of all commands using **/help**
  
-Don't forget to download Python on your machine and install all libraries using command **pip install -r requirements.txt**
+Don't forget to download Python 3.10+ on your machine and install all libraries using command **pip install -r requirements.txt**
