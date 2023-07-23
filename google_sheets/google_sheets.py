@@ -53,6 +53,9 @@ def create_sheet(spreadsheet_id: str, sheet_name: str):
                                 {"userEnteredValue": {"stringValue": "Примечания"}}, 
                                 {"userEnteredValue": {"stringValue": ""}}, 
                                 {"userEnteredValue": {"stringValue": "Всего за месяц"}}, 
+                                {"userEnteredValue": {"stringValue": ""}}, 
+                                {"userEnteredValue": {"stringValue": "Накопительный счет на начало месяца"}},
+                                {"userEnteredValue": {"stringValue": "Накопительный счет на конец месяца"}}
                             ]
                         },
                         "start": {
@@ -67,8 +70,8 @@ def create_sheet(spreadsheet_id: str, sheet_name: str):
                     "updateCells": {
                         "fields": "*",
                         "rows": {
-                            "values": [    
-                                {"userEnteredValue": {"formulaValue": "=SUM(C:C)"}}, 
+                            "values": [
+                                {"userEnteredValue": {"formulaValue": "=SUM(C:C)"}}
                             ]
                         },
                         "start": {
@@ -76,6 +79,28 @@ def create_sheet(spreadsheet_id: str, sheet_name: str):
                             "rowIndex": 1,
                             "columnIndex": 5
                         }
+                    }
+                },
+                {
+                    # formatting общая сумма за месяц
+                    "repeatCell": {
+                        "range": {
+                            "sheetId": sheet_id,
+                            "startRowIndex": 1,
+                            "endRowIndex": 2,
+                            "startColumnIndex": 5,
+                            "endColumnIndex": 9
+                        },
+                        "cell": {
+                            "userEnteredFormat": {
+                                "numberFormat" : {
+                                    "type": "CURRENCY",
+                                    "pattern": "#,##0.00[$₽-411]"
+                                },
+                                "horizontalAlignment" : "CENTER",                                
+                            }
+                        },
+                        "fields": "userEnteredFormat(numberFormat,horizontalAlignment)"
                     }
                 },
                 {
@@ -90,14 +115,15 @@ def create_sheet(spreadsheet_id: str, sheet_name: str):
                         "userEnteredFormat": {
                             "horizontalAlignment" : "CENTER",
                             "textFormat": {
-                            "fontSize": 11,
-                            "bold": True
+                                "fontSize": 11,
+                                "bold": True
                             }
                         }
                         },
                         "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"
                     }
                 },
+                # formatting size of column
                 {
                     "updateDimensionProperties": {
                         "range": {
@@ -108,17 +134,60 @@ def create_sheet(spreadsheet_id: str, sheet_name: str):
                         },
                         "properties": {
                         "pixelSize": 
-                            155
+                            150
                         },
                         "fields": "pixelSize"
                     }
                 },
+                # formatting size of columns накопительный счет
+                {
+                    "updateDimensionProperties": {
+                        "range": {
+                            "sheetId": sheet_id,
+                            "dimension": "COLUMNS",
+                            "startIndex": 7,
+                            "endIndex": 9
+                        },
+                        "properties": {
+                            "pixelSize": 
+                                305
+                            },
+                        "fields": "pixelSize"
+                    }
+                },
+                {
+                    # formatting bg накопительный счет
+                    "repeatCell": {
+                        "range": {
+                            "sheetId": sheet_id,
+                            "startRowIndex": 0,
+                            "endRowIndex": 1,
+                            "startColumnIndex": 7,
+                            "endColumnIndex": 9
+                        },
+                        "cell": {
+                            "userEnteredFormat": {
+                                "backgroundColor" : {
+                                    "red": 0.85,
+                                    "green": 0.92,
+                                    "blue": 0.83
+                                },
+                                "numberFormat" : {
+                                    "type": "CURRENCY",
+                                    "pattern": "#,##0.00[$₽-411]"
+                                }
+                            }
+                        },
+                        "fields": "userEnteredFormat(backgroundColor,numberFormat)"
+                    }
+                }
             ]
         }
     ).execute()
 
 
 def write_new_action(spreadsheet_id: str, amount: str, category: str, date_of_transaction: str) -> None:
+    sheet_id = get_sheet_id_by_sheet_name(spreadsheet_id)
     service.spreadsheets().batchUpdate(
         spreadsheetId=spreadsheet_id,
         body={
@@ -127,7 +196,7 @@ def write_new_action(spreadsheet_id: str, amount: str, category: str, date_of_tr
                 {
                     "insertRange": {
                         "range": {
-                            "sheetId": get_sheet_id_by_sheet_name(spreadsheet_id),
+                            "sheetId": sheet_id,
                             "startRowIndex": 1,
                             "endRowIndex": 2,
                             "startColumnIndex": 0,
@@ -144,11 +213,11 @@ def write_new_action(spreadsheet_id: str, amount: str, category: str, date_of_tr
                             "values": [    
                                 {"userEnteredValue": {"stringValue": date_of_transaction}}, 
                                 {"userEnteredValue": {"stringValue": category}}, 
-                                {"userEnteredValue": {"stringValue": amount}}, 
+                                {"userEnteredValue": {"numberValue": float(amount)}}, 
                             ]
                         },
                         "start": {
-                            "sheetId": get_sheet_id_by_sheet_name(spreadsheet_id),
+                            "sheetId": sheet_id,
                             "rowIndex": 1,
                             "columnIndex": 0
                         }
@@ -158,7 +227,7 @@ def write_new_action(spreadsheet_id: str, amount: str, category: str, date_of_tr
                 {
                     "sortRange": {
                         "range": {
-                            "sheetId": get_sheet_id_by_sheet_name(spreadsheet_id),
+                            "sheetId": sheet_id,
                             "startRowIndex": 1,
                             "startColumnIndex": 0,
                             "endColumnIndex": 4,
@@ -169,6 +238,30 @@ def write_new_action(spreadsheet_id: str, amount: str, category: str, date_of_tr
                                 "sortOrder": "DESCENDING"
                             }
                         ]
+                    }
+                },
+                # formatting 
+                {
+                    "repeatCell": {
+                        "range": {
+                            "sheetId": sheet_id,
+                            "startRowIndex": 1,
+                            "endRowIndex": 2,
+                            "startColumnIndex": 2,
+                            "endColumnIndex": 3
+                        },
+                        "cell": {
+                        "userEnteredFormat": {
+                            "horizontalAlignment" : "CENTER",
+                            "numberFormat" : {
+                                "type": "CURRENCY",
+                                "pattern": "#,##0.00[$₽-411]"
+                            },
+                            "textFormat": {
+                            }
+                        }
+                        },
+                        "fields": "userEnteredFormat(numberFormat,textFormat,horizontalAlignment)"
                     }
                 }
             ]
@@ -185,3 +278,106 @@ def get_sheet_id_by_sheet_name(spreadsheet_id: str, sheet_name: str = None) -> s
             return sheet['properties']['sheetId']
     return None
 
+
+def get_transactions_count(spreadsheet_id: str) -> int:
+    arr = service.spreadsheets().values().get(
+        spreadsheetId=spreadsheet_id,
+        range=f"{months[datetime.now().month]}!B1:B"
+    ).execute().get("values")
+    return len(arr)-1
+
+
+def get_all_categories(spreadsheet_id: str) -> list:
+    arr = service.spreadsheets().values().get(
+        spreadsheetId=spreadsheet_id,
+        range=f"{months[datetime.now().month]}!B1:B"
+    ).execute().get("values")
+
+    return list(set([el[0] for el in arr]))
+
+
+def get_chart_spec(spreadsheet_id: str, sheet_id: int) -> dict:
+    return {
+        "title": "Диаграмма месячных расходов",
+        "pieChart": {
+            "legendPosition": "LABELED_LEGEND",
+            "threeDimensional": True,
+            "domain": {
+                "aggregateType": "SUM",
+                "sourceRange": {
+                    "sources": [
+                        {
+                            "sheetId": sheet_id,
+                            "startRowIndex": 1,
+                            "endRowIndex": get_transactions_count(spreadsheet_id)+2,
+                            "startColumnIndex": 1,
+                            "endColumnIndex": 2
+                        }
+                    ]
+                }
+            },
+            "series": {
+                "aggregateType": "SUM",
+                "sourceRange": {
+                    "sources": [{
+                        "sheetId": sheet_id,
+                        "startRowIndex": 1,
+                        "endRowIndex": get_transactions_count(spreadsheet_id)+2,
+                        "startColumnIndex": 2,
+                        "endColumnIndex": 3
+                    }]
+                }
+            }
+        }
+    }
+
+
+def get_chart_id(spreadsheet_id: str) -> int:
+    arr = service.spreadsheets().get(
+        spreadsheetId=spreadsheet_id,
+        ranges=[f"{months[datetime.now().month]}!A1:Z100"]
+    ).execute()
+    return arr.get("sheets")[0].get("charts")[0].get("chartId")
+
+
+def create_chart(spreadsheet_id: str):
+    sheet_id = get_sheet_id_by_sheet_name(spreadsheet_id=spreadsheet_id)
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=spreadsheet_id,
+        body={
+            "requests": [{
+                "addChart": {
+                    "chart": {
+                        "spec": get_chart_spec(spreadsheet_id, sheet_id),
+                        "position": {
+                            "overlayPosition": {
+                                # ячейка, которая будет левым верхним углом диаграммы
+                                "anchorCell": {
+                                    "sheetId": sheet_id,
+                                    "rowIndex": 10,
+                                    "columnIndex": 6
+                                }
+                            }
+                        }
+                    }
+                }
+            }]
+        }
+    ).execute()
+
+
+def update_chart(spreadsheet_id: str):
+    sheet_id = get_sheet_id_by_sheet_name(spreadsheet_id=spreadsheet_id)
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=spreadsheet_id,
+        body={
+            "requests": [{
+                "updateChartSpec": {
+                    "chartId": get_chart_id(spreadsheet_id),
+                    "spec": get_chart_spec(spreadsheet_id, sheet_id)
+                }
+            }]
+        }
+    ).execute()
+
+    

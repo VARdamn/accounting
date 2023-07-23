@@ -12,8 +12,15 @@ from misc import dp, bot, months
 @dp.message_handler(commands=['start'], state="*", chat_type=types.ChatType.PRIVATE)
 async def cmd_start(message: types.Message, state=None):
     await state.finish()
-    await bot.send_message(message.chat.id, "This is simple bot. \nType /help to get all commands")\
+    await bot.send_message(message.chat.id, "This is simple bot. \nType /help to get all commands")
 
+
+@dp.message_handler(commands=['test'], state="*", chat_type=types.ChatType.PRIVATE)
+async def cmd_start(message: types.Message, state=None):
+    await state.finish()
+    spreadsheet_id = db.get_user_spreadsheet_id(message.chat.id)
+    google_sheets.get_all_categories(spreadsheet_id)
+    
 
 @dp.message_handler(commands=['help'], state="*", chat_type=types.ChatType.PRIVATE)
 async def cmd_help(message: types.Message, state=None):
@@ -49,5 +56,12 @@ async def cmd_expense(message: types.Message, state=None):
     
     spreadsheet_id = db.get_user_spreadsheet_id(message.chat.id)
     # add new transaction to sheet
-    google_sheets.write_new_action(spreadsheet_id, amount, category, date_of_transaction)
+    if google_sheets.get_transactions_count(spreadsheet_id) < 1:
+        google_sheets.write_new_action(spreadsheet_id, amount, category, date_of_transaction)
+        print("creating chart")
+        google_sheets.create_chart(spreadsheet_id)
+    else:
+        google_sheets.write_new_action(spreadsheet_id, amount, category, date_of_transaction)
+        print("updating chart")
+        google_sheets.update_chart(spreadsheet_id)
     await bot.send_message(message.chat.id, "✅")
