@@ -362,7 +362,36 @@ def write_new_action(spreadsheet_id: str, amount: str, category: str, date_of_tr
                         ]
                     }
                 },
-                # formatting 
+                # formatting all 4 cells
+                {
+                    "repeatCell": {
+                        "range": {
+                            "sheetId": sheet_id,
+                            "startRowIndex": 1,
+                            "endRowIndex": 2,
+                            "startColumnIndex": 0,
+                            "endColumnIndex": 4
+                        },
+                        "cell": {
+                        "userEnteredFormat": {
+                                "numberFormat" : {
+                                "type": "CURRENCY",
+                                "pattern": "#,##0.00[$₽-411]"
+                            },
+                            "backgroundColor" : {
+                                "red": 1,
+                                "green": 0.95,
+                                "blue": 0.8
+                            },
+                            "textFormat": {
+                                "fontSize": 11
+                            }
+                        }
+                        },
+                        "fields": "userEnteredFormat(numberFormat,backgroundColor,textFormat)"
+                    }
+                },
+                # setting alignment for сумма
                 {
                     "repeatCell": {
                         "range": {
@@ -373,17 +402,26 @@ def write_new_action(spreadsheet_id: str, amount: str, category: str, date_of_tr
                             "endColumnIndex": 3
                         },
                         "cell": {
-                        "userEnteredFormat": {
-                            "horizontalAlignment" : "CENTER",
-                            "numberFormat" : {
-                                "type": "CURRENCY",
-                                "pattern": "#,##0.00[$₽-411]"
-                            },
-                            "textFormat": {
+                            "userEnteredFormat": {
+                                "horizontalAlignment" : "CENTER"
                             }
-                        }
                         },
-                        "fields": "userEnteredFormat(numberFormat,textFormat,horizontalAlignment)"
+                        "fields": "userEnteredFormat(horizontalAlignment)"
+                    }
+                },
+                # границы
+                {
+                    "updateBorders": {
+                        "range": {
+                            "sheetId": sheet_id,
+                            "startRowIndex": 1,
+                            "endRowIndex": 3,
+                            "startColumnIndex": 3,
+                            "endColumnIndex": 4
+                        },
+                        "right": {
+                            "style": "SOLID_MEDIUM"
+                        }
                     }
                 }
             ]

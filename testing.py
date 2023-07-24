@@ -417,7 +417,126 @@ def create_sheet(spreadsheet_id: str, sheet_name: str):
     ).execute()
 
 
-create_sheet(spreadsheet_id, "Август")
+def write_new_action(spreadsheet_id: str, amount: str, category: str, date_of_transaction: str) -> None:
+    sheet_id = get_sheet_id_by_sheet_name(spreadsheet_id)
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=spreadsheet_id,
+        body={
+            "requests": [
+                # inserting empty rows
+                {
+                    "insertRange": {
+                        "range": {
+                            "sheetId": sheet_id,
+                            "startRowIndex": 1,
+                            "endRowIndex": 2,
+                            "startColumnIndex": 0,
+                            "endColumnIndex": 4
+                        },
+                        "shiftDimension": "ROWS"
+                    }
+                },
+                # inserting data
+                {
+                    "updateCells": {
+                        "fields": "*",
+                        "rows": {
+                            "values": [    
+                                {"userEnteredValue": {"stringValue": date_of_transaction}}, 
+                                {"userEnteredValue": {"stringValue": category}}, 
+                                {"userEnteredValue": {"numberValue": float(amount)}}, 
+                            ]
+                        },
+                        "start": {
+                            "sheetId": sheet_id,
+                            "rowIndex": 1,
+                            "columnIndex": 0
+                        }
+                    }
+                },
+                # sorting by date
+                {
+                    "sortRange": {
+                        "range": {
+                            "sheetId": sheet_id,
+                            "startRowIndex": 1,
+                            "startColumnIndex": 0,
+                            "endColumnIndex": 4,
+                        },
+                        "sortSpecs": [
+                            {
+                                "dimensionIndex": 0,
+                                "sortOrder": "DESCENDING"
+                            }
+                        ]
+                    }
+                },
+                # formatting all 4 cells
+                {
+                    "repeatCell": {
+                        "range": {
+                            "sheetId": sheet_id,
+                            "startRowIndex": 1,
+                            "endRowIndex": 2,
+                            "startColumnIndex": 0,
+                            "endColumnIndex": 4
+                        },
+                        "cell": {
+                        "userEnteredFormat": {
+                                "numberFormat" : {
+                                "type": "CURRENCY",
+                                "pattern": "#,##0.00[$₽-411]"
+                            },
+                            "backgroundColor" : {
+                                "red": 1,
+                                "green": 0.95,
+                                "blue": 0.8
+                            },
+                            "textFormat": {
+                                "fontSize": 11
+                            }
+                        }
+                        },
+                        "fields": "userEnteredFormat(numberFormat,backgroundColor,textFormat)"
+                    }
+                },
+                # setting alignment for сумма
+                {
+                    "repeatCell": {
+                        "range": {
+                            "sheetId": sheet_id,
+                            "startRowIndex": 1,
+                            "endRowIndex": 2,
+                            "startColumnIndex": 2,
+                            "endColumnIndex": 3
+                        },
+                        "cell": {
+                            "userEnteredFormat": {
+                                "horizontalAlignment" : "CENTER"
+                            }
+                        },
+                        "fields": "userEnteredFormat(horizontalAlignment)"
+                    }
+                },
+                # границы
+                {
+                    "updateBorders": {
+                        "range": {
+                            "sheetId": sheet_id,
+                            "startRowIndex": 1,
+                            "endRowIndex": 3,
+                            "startColumnIndex": 3,
+                            "endColumnIndex": 4
+                        },
+                        "right": {
+                            "style": "SOLID_MEDIUM"
+                        }
+                    }
+                }
+            ]
+        }
+    ).execute()
 
+write_new_action(spreadsheet_id, "100", "Транспорт", "25.07.2023")
 
 # print(31.95771+0.40316341+0.44267165+0.59100377+0.31019123+0.45588529+0.15698007+0.57640924+0.32817803+0.16970323+0.04578118+0.21970422+0.12991144+0.05595179+0.01047318+0.17150071+0.59207518+0.55458135+0.59544107)
