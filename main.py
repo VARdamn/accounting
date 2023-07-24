@@ -29,6 +29,8 @@ async def set_commands(dispatcher):
     commands = [
         types.BotCommand(command="start", description="Start bot"),
         types.BotCommand(command="help", description="Get commands list with description"),
+        types.BotCommand(command="add_expenses_spreadsheet", description="Добавить таблицу расходов"),
+        types.BotCommand(command="add_incomes_spreadsheet", description="Добавить таблицу доходов"),
     ]
     await bot.set_my_commands(commands)
 

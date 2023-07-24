@@ -41,8 +41,8 @@ def create_sheet(spreadsheet_id: str, sheet_name: str):
         spreadsheetId=spreadsheet_id,
         body={
             "requests": [
+                # creating table header
                 {
-                    # creating table header
                     "updateCells": {
                         "fields": "*",
                         "rows": {
@@ -51,11 +51,9 @@ def create_sheet(spreadsheet_id: str, sheet_name: str):
                                 {"userEnteredValue": {"stringValue": "Категория"}}, 
                                 {"userEnteredValue": {"stringValue": "Сумма"}}, 
                                 {"userEnteredValue": {"stringValue": "Примечания"}}, 
-                                {"userEnteredValue": {"stringValue": ""}}, 
                                 {"userEnteredValue": {"stringValue": "Всего за месяц"}}, 
-                                {"userEnteredValue": {"stringValue": ""}}, 
-                                {"userEnteredValue": {"stringValue": "Накопительный счет на начало месяца"}},
-                                {"userEnteredValue": {"stringValue": "Накопительный счет на конец месяца"}}
+                                {"userEnteredValue": {"stringValue": "Накопительный счет (начало месяца)"}},
+                                {"userEnteredValue": {"stringValue": "Накопительный счет (конец месяца)"}}
                             ]
                         },
                         "start": {
@@ -65,8 +63,8 @@ def create_sheet(spreadsheet_id: str, sheet_name: str):
                         }
                     }
                 },
+                # formula to calculate sum for month
                 {
-                    # adding formula to calculate the amount for month
                     "updateCells": {
                         "fields": "*",
                         "rows": {
@@ -77,19 +75,19 @@ def create_sheet(spreadsheet_id: str, sheet_name: str):
                         "start": {
                             "sheetId": sheet_id,
                             "rowIndex": 1,
-                            "columnIndex": 5
+                            "columnIndex": 4
                         }
                     }
                 },
+                # formatting всего за месяц и накоп счет делаем рубли
                 {
-                    # formatting общая сумма за месяц
                     "repeatCell": {
                         "range": {
                             "sheetId": sheet_id,
                             "startRowIndex": 1,
                             "endRowIndex": 2,
-                            "startColumnIndex": 5,
-                            "endColumnIndex": 9
+                            "startColumnIndex": 4,
+                            "endColumnIndex": 7
                         },
                         "cell": {
                             "userEnteredFormat": {
@@ -103,34 +101,30 @@ def create_sheet(spreadsheet_id: str, sheet_name: str):
                         "fields": "userEnteredFormat(numberFormat,horizontalAlignment)"
                     }
                 },
-                {
-                    # formatting header; выравнивание по центру, шрифт 12 и жирный текст
-                    "repeatCell": {
-                        "range": {
-                            "sheetId": sheet_id,
-                            "startRowIndex": 0,
-                            "endRowIndex": 1
-                        },
-                        "cell": {
-                        "userEnteredFormat": {
-                            "horizontalAlignment" : "CENTER",
-                            "textFormat": {
-                                "fontSize": 11,
-                                "bold": True
-                            }
-                        }
-                        },
-                        "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"
-                    }
-                },
-                # formatting size of column
+                # formatting size of column примечания
                 {
                     "updateDimensionProperties": {
                         "range": {
                             "sheetId": sheet_id,
                             "dimension": "COLUMNS",
-                            "startIndex": 5,
-                            "endIndex": 6
+                            "startIndex": 3,
+                            "endIndex": 4
+                        },
+                        "properties": {
+                        "pixelSize": 
+                            135
+                        },
+                        "fields": "pixelSize"
+                    }
+                },
+                # formatting size of column всего за месяц
+                {
+                    "updateDimensionProperties": {
+                        "range": {
+                            "sheetId": sheet_id,
+                            "dimension": "COLUMNS",
+                            "startIndex": 4,
+                            "endIndex": 5
                         },
                         "properties": {
                         "pixelSize": 
@@ -145,25 +139,52 @@ def create_sheet(spreadsheet_id: str, sheet_name: str):
                         "range": {
                             "sheetId": sheet_id,
                             "dimension": "COLUMNS",
-                            "startIndex": 7,
-                            "endIndex": 9
+                            "startIndex": 5,
+                            "endIndex": 7
                         },
                         "properties": {
                             "pixelSize": 
-                                305
+                                340
                             },
                         "fields": "pixelSize"
                     }
                 },
+                # formatting bg color накопительный счет header
                 {
-                    # formatting bg накопительный счет
                     "repeatCell": {
                         "range": {
                             "sheetId": sheet_id,
                             "startRowIndex": 0,
                             "endRowIndex": 1,
-                            "startColumnIndex": 7,
-                            "endColumnIndex": 9
+                            "startColumnIndex": 5,
+                            "endColumnIndex": 7
+                        },
+                        "cell": {
+                            "userEnteredFormat": {
+                                "backgroundColor" : {
+                                    "red": 0.58,
+                                    "green": 0.77,
+                                    "blue": 0.49
+                                },
+                                "horizontalAlignment" : "CENTER",
+                                "textFormat": {
+                                    "fontSize": 13,
+                                    "bold": True
+                                }
+                            }
+                        },
+                        "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"
+                    },
+                },
+                # formatting bg color накопительный счет нижняя часть
+                {
+                    "repeatCell": {
+                        "range": {
+                            "sheetId": sheet_id,
+                            "startRowIndex": 1,
+                            "endRowIndex": 2,
+                            "startColumnIndex": 5,
+                            "endColumnIndex": 7
                         },
                         "cell": {
                             "userEnteredFormat": {
@@ -174,17 +195,118 @@ def create_sheet(spreadsheet_id: str, sheet_name: str):
                                 },
                                 "numberFormat" : {
                                     "type": "CURRENCY",
-                                    "pattern": "#,##0.00[$₽-411]"
+                                    "pattern": "#,##0.00 [$₽-411]"
+                                },
+                                "horizontalAlignment" : "CENTER",
+                                "textFormat": {
+                                    "fontSize": 11
                                 }
                             }
                         },
-                        "fields": "userEnteredFormat(backgroundColor,numberFormat)"
+                        "fields": "userEnteredFormat(backgroundColor,numberFormat,textFormat,horizontalAlignment)"
+                    }
+                },
+                # formatting bg color main header
+                {
+                    "repeatCell": {
+                        "range": {
+                            "sheetId": sheet_id,
+                            "startRowIndex": 0,
+                            "endRowIndex": 1,
+                            "startColumnIndex": 0,
+                            "endColumnIndex": 5
+                        },
+                        "cell": {
+                            "userEnteredFormat": {
+                                "backgroundColor" : {
+                                    "red": 0.96,
+                                    "green": 0.7,
+                                    "blue": 0.42
+                                },
+                                "horizontalAlignment" : "CENTER",
+                                "textFormat": {
+                                    "fontSize": 13,
+                                    "bold": True
+                                }
+                            }
+                        },
+                        "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"
+                    }
+                },
+                # formatting bg color сумма всего за месяц
+                {
+                    "repeatCell": {
+                        "range": {
+                            "sheetId": sheet_id,
+                            "startRowIndex": 1,
+                            "endRowIndex": 2,
+                            "startColumnIndex": 4,
+                            "endColumnIndex": 5
+                        },
+                        "cell": {
+                            "userEnteredFormat": {
+                                "backgroundColor" : {
+                                    "red": 1,
+                                    "green": 0.95,
+                                    "blue": 0.8
+                                },
+                                "horizontalAlignment" : "CENTER",
+                                "textFormat": {
+                                    "fontSize": 11
+                                }
+                            }
+                        },
+                        "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"
+                    }
+                },
+
+                #### ГРАНИЦЫ
+                {
+                    "updateBorders": {
+                        "range": {
+                            "sheetId": sheet_id,
+                            "startRowIndex": 0,
+                            "endRowIndex": 1,
+                            "startColumnIndex": 0,
+                            "endColumnIndex": 4
+                        },
+                        "bottom": {
+                            "style": "SOLID_MEDIUM"
+                        }
+                    }
+                },
+                {
+                    "updateBorders": {
+                        "range": {
+                            "sheetId": sheet_id,
+                            "startRowIndex": 0,
+                            "endRowIndex": 2,
+                            "startColumnIndex": 4,
+                            "endColumnIndex": 7
+                        },
+                        "bottom": {
+                            "style": "SOLID_MEDIUM"
+                        },
+                        "top": {
+                            "style": "SOLID_MEDIUM"
+                        },
+                        "left": {
+                            "style": "SOLID_MEDIUM"
+                        },
+                        "right": {
+                            "style": "SOLID_MEDIUM"
+                        },
+                        "innerVertical": {
+                            "style": "SOLID_MEDIUM"
+                        },
+                        "innerHorizontal": {
+                            "style": "SOLID_MEDIUM"
+                        }
                     }
                 }
             ]
         }
     ).execute()
-
 
 def write_new_action(spreadsheet_id: str, amount: str, category: str, date_of_transaction: str) -> None:
     sheet_id = get_sheet_id_by_sheet_name(spreadsheet_id)
