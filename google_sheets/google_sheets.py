@@ -4,7 +4,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 
 from misc import months
-
+import google_sheets.queries as q
 
 CREDENTIALS_FILE = 'creds.json'
 
@@ -16,523 +16,223 @@ httpAuth = credentials.authorize(httplib2.Http())
 service = discovery.build('sheets', 'v4', http=httpAuth)
 
 
-def create_sheet(spreadsheet_id: str, sheet_name: str):
-    service.spreadsheets().batchUpdate(
-        spreadsheetId=spreadsheet_id,
-        body={
-            "requests": [
-                {
+class Table:
+
+    '''Basic table class.'''
+
+    def __init__(self, 
+                 spreadsheet_id: str, 
+                 amount: float = 0, 
+                 category: str = "CATEGORY", 
+                 date_of_transaction: str = "01.01.1970",
+                 sheet_name: str | None = None,  
+                 with_bottom: bool = False
+                ) -> None:
+        self.spreadsheet_id = spreadsheet_id
+        self.amount = amount
+        self.category = category
+        self.date_of_transaction = date_of_transaction
+        self.sheet_name = "Февраль"
+        # self.sheet_name = sheet_name if sheet_name else months[datetime.now().month]
+        self.with_bottom = with_bottom
+        self.sheet_id = self.get_sheet_id_by_sheet_name()
+
+    def get_sheet_id_by_sheet_name(self) -> int | None:
+        sheets = service.spreadsheets().get(spreadsheetId=self.spreadsheet_id).execute()
+        sheets = sheets['sheets']
+        for sheet in sheets:
+            if sheet['properties']['title'] == self.sheet_name: # ex. months[datetime.now().month] == Сентябрь
+            # if sheet['properties']['title'] == "Декабрь": # ex. months[datetime.now().month] == Сентябрь
+                return sheet['properties']['sheetId']
+        return None
+
+    def get_transactions_count(self) -> int:
+        arr = service.spreadsheets().values().get(
+            spreadsheetId=self.spreadsheet_id,
+            range=f"{months[datetime.now().month]}!B1:B"
+        ).execute().get("values")
+        return len(arr)-1
+
+    def get_all_categories(self) -> list:
+        arr = service.spreadsheets().values().get(
+            spreadsheetId=self.spreadsheet_id,
+            range=f"{months[datetime.now().month]}!B1:B"
+        ).execute().get("values")
+
+        return list(set([el[0] for el in arr]))
+
+
+class Expenses(Table):
+
+    '''
+    Class for Expenses table.
+    '''
+    
+    def __init__(self, 
+                 spreadsheet_id: str, 
+                 amount: float = 0, 
+                 category: str = "CATEGORY", 
+                 date_of_transaction: str = "01.01.1970",
+                 sheet_name: str | None = None,  
+                 with_bottom: bool = False
+                ) -> None:
+        super().__init__(spreadsheet_id, amount, category, date_of_transaction, sheet_name, with_bottom)
+        self.header_bg_color = {
+            "red": 0.96,
+            "green": 0.7,
+            "blue": 0.42
+        }
+        self.action_bg_color = {
+            "red": 1,
+            "green": 0.95,
+            "blue": 0.8
+        }
+        self.additional_header_bg_color = {
+            "red": 224/255,
+            "green": 102/255,
+            "blue": 102/255
+        }
+        self.additional_action_bg_color = {
+            "red": 234/255,
+            "green": 153/255,
+            "blue": 153/255
+        }
+
+    def create_sheet(self):
+        service.spreadsheets().batchUpdate(
+            spreadsheetId=self.spreadsheet_id,
+            body={
+                "requests": [{
                     # creating sheet
                     'addSheet': {
                         'properties': {
-                            'title': sheet_name
+                            'title': self.sheet_name
                         }
                     }
-                }
-            ]
-        }
-    ).execute()
-
-    sheet_id = get_sheet_id_by_sheet_name(spreadsheet_id, sheet_name)
-
-    service.spreadsheets().batchUpdate(
-        spreadsheetId=spreadsheet_id,
-        body={
-            "requests": [
-                # creating table header
-                {
-                    "updateCells": {
-                        "fields": "*",
-                        "rows": {
-                            "values": [    
-                                {"userEnteredValue": {"stringValue": "Дата"}}, 
-                                {"userEnteredValue": {"stringValue": "Категория"}}, 
-                                {"userEnteredValue": {"stringValue": "Сумма"}}, 
-                                {"userEnteredValue": {"stringValue": "Примечания"}}, 
-                                {"userEnteredValue": {"stringValue": "Всего за месяц"}}, 
-                                {"userEnteredValue": {"stringValue": "Накопительный счет (начало месяца)"}},
-                                {"userEnteredValue": {"stringValue": "Накопительный счет (конец месяца)"}}
-                            ]
-                        },
-                        "start": {
-                            "sheetId": sheet_id,
-                            "rowIndex": 0,
-                            "columnIndex": 0
-                        }
-                    }
-                },
-                # formula to calculate sum for month
-                {
-                    "updateCells": {
-                        "fields": "*",
-                        "rows": {
-                            "values": [
-                                {"userEnteredValue": {"formulaValue": "=SUM(C:C)"}}
-                            ]
-                        },
-                        "start": {
-                            "sheetId": sheet_id,
-                            "rowIndex": 1,
-                            "columnIndex": 4
-                        }
-                    }
-                },
-                # formatting всего за месяц и накоп счет делаем рубли
-                {
-                    "repeatCell": {
-                        "range": {
-                            "sheetId": sheet_id,
-                            "startRowIndex": 1,
-                            "endRowIndex": 2,
-                            "startColumnIndex": 4,
-                            "endColumnIndex": 7
-                        },
-                        "cell": {
-                            "userEnteredFormat": {
-                                "numberFormat" : {
-                                    "type": "CURRENCY",
-                                    "pattern": "#,##0.00[$₽-411]"
-                                },
-                                "horizontalAlignment" : "CENTER",                                
-                            }
-                        },
-                        "fields": "userEnteredFormat(numberFormat,horizontalAlignment)"
-                    }
-                },
-                # formatting size of column примечания
-                {
-                    "updateDimensionProperties": {
-                        "range": {
-                            "sheetId": sheet_id,
-                            "dimension": "COLUMNS",
-                            "startIndex": 3,
-                            "endIndex": 4
-                        },
-                        "properties": {
-                        "pixelSize": 
-                            135
-                        },
-                        "fields": "pixelSize"
-                    }
-                },
-                # formatting size of column всего за месяц
-                {
-                    "updateDimensionProperties": {
-                        "range": {
-                            "sheetId": sheet_id,
-                            "dimension": "COLUMNS",
-                            "startIndex": 4,
-                            "endIndex": 5
-                        },
-                        "properties": {
-                        "pixelSize": 
-                            150
-                        },
-                        "fields": "pixelSize"
-                    }
-                },
-                # formatting size of columns накопительный счет
-                {
-                    "updateDimensionProperties": {
-                        "range": {
-                            "sheetId": sheet_id,
-                            "dimension": "COLUMNS",
-                            "startIndex": 5,
-                            "endIndex": 7
-                        },
-                        "properties": {
-                            "pixelSize": 
-                                340
-                            },
-                        "fields": "pixelSize"
-                    }
-                },
-                # formatting bg color накопительный счет header
-                {
-                    "repeatCell": {
-                        "range": {
-                            "sheetId": sheet_id,
-                            "startRowIndex": 0,
-                            "endRowIndex": 1,
-                            "startColumnIndex": 5,
-                            "endColumnIndex": 7
-                        },
-                        "cell": {
-                            "userEnteredFormat": {
-                                "backgroundColor" : {
-                                    "red": 0.58,
-                                    "green": 0.77,
-                                    "blue": 0.49
-                                },
-                                "horizontalAlignment" : "CENTER",
-                                "textFormat": {
-                                    "fontSize": 13,
-                                    "bold": True
-                                }
-                            }
-                        },
-                        "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"
-                    },
-                },
-                # formatting bg color накопительный счет нижняя часть
-                {
-                    "repeatCell": {
-                        "range": {
-                            "sheetId": sheet_id,
-                            "startRowIndex": 1,
-                            "endRowIndex": 2,
-                            "startColumnIndex": 5,
-                            "endColumnIndex": 7
-                        },
-                        "cell": {
-                            "userEnteredFormat": {
-                                "backgroundColor" : {
-                                    "red": 0.85,
-                                    "green": 0.92,
-                                    "blue": 0.83
-                                },
-                                "numberFormat" : {
-                                    "type": "CURRENCY",
-                                    "pattern": "#,##0.00 [$₽-411]"
-                                },
-                                "horizontalAlignment" : "CENTER",
-                                "textFormat": {
-                                    "fontSize": 11
-                                }
-                            }
-                        },
-                        "fields": "userEnteredFormat(backgroundColor,numberFormat,textFormat,horizontalAlignment)"
-                    }
-                },
-                # formatting bg color main header
-                {
-                    "repeatCell": {
-                        "range": {
-                            "sheetId": sheet_id,
-                            "startRowIndex": 0,
-                            "endRowIndex": 1,
-                            "startColumnIndex": 0,
-                            "endColumnIndex": 5
-                        },
-                        "cell": {
-                            "userEnteredFormat": {
-                                "backgroundColor" : {
-                                    "red": 0.96,
-                                    "green": 0.7,
-                                    "blue": 0.42
-                                },
-                                "horizontalAlignment" : "CENTER",
-                                "textFormat": {
-                                    "fontSize": 13,
-                                    "bold": True
-                                }
-                            }
-                        },
-                        "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"
-                    }
-                },
-                # formatting bg color сумма всего за месяц
-                {
-                    "repeatCell": {
-                        "range": {
-                            "sheetId": sheet_id,
-                            "startRowIndex": 1,
-                            "endRowIndex": 2,
-                            "startColumnIndex": 4,
-                            "endColumnIndex": 5
-                        },
-                        "cell": {
-                            "userEnteredFormat": {
-                                "backgroundColor" : {
-                                    "red": 1,
-                                    "green": 0.95,
-                                    "blue": 0.8
-                                },
-                                "horizontalAlignment" : "CENTER",
-                                "textFormat": {
-                                    "fontSize": 11
-                                }
-                            }
-                        },
-                        "fields": "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment)"
-                    }
-                },
-
-                #### ГРАНИЦЫ
-                {
-                    "updateBorders": {
-                        "range": {
-                            "sheetId": sheet_id,
-                            "startRowIndex": 0,
-                            "endRowIndex": 1,
-                            "startColumnIndex": 0,
-                            "endColumnIndex": 4
-                        },
-                        "bottom": {
-                            "style": "SOLID_MEDIUM"
-                        }
-                    }
-                },
-                {
-                    "updateBorders": {
-                        "range": {
-                            "sheetId": sheet_id,
-                            "startRowIndex": 0,
-                            "endRowIndex": 2,
-                            "startColumnIndex": 4,
-                            "endColumnIndex": 7
-                        },
-                        "bottom": {
-                            "style": "SOLID_MEDIUM"
-                        },
-                        "top": {
-                            "style": "SOLID_MEDIUM"
-                        },
-                        "left": {
-                            "style": "SOLID_MEDIUM"
-                        },
-                        "right": {
-                            "style": "SOLID_MEDIUM"
-                        },
-                        "innerVertical": {
-                            "style": "SOLID_MEDIUM"
-                        },
-                        "innerHorizontal": {
-                            "style": "SOLID_MEDIUM"
-                        }
-                    }
-                }
-            ]
-        }
-    ).execute()
-
-
-def write_new_action(spreadsheet_id: str, amount: str, category: str, date_of_transaction: str, with_bottom: bool = False) -> None:
-    sheet_id = get_sheet_id_by_sheet_name(spreadsheet_id)
-    service.spreadsheets().batchUpdate(
-        spreadsheetId=spreadsheet_id,
-        body={
-            "requests": [
-                # inserting empty rows
-                {
-                    "insertRange": {
-                        "range": {
-                            "sheetId": sheet_id,
-                            "startRowIndex": 1,
-                            "endRowIndex": 2,
-                            "startColumnIndex": 0,
-                            "endColumnIndex": 4
-                        },
-                        "shiftDimension": "ROWS"
-                    }
-                },
-                # inserting data
-                {
-                    "updateCells": {
-                        "fields": "*",
-                        "rows": {
-                            "values": [    
-                                {"userEnteredValue": {"stringValue": date_of_transaction}}, 
-                                {"userEnteredValue": {"stringValue": category}}, 
-                                {"userEnteredValue": {"numberValue": float(amount)}}, 
-                            ]
-                        },
-                        "start": {
-                            "sheetId": sheet_id,
-                            "rowIndex": 1,
-                            "columnIndex": 0
-                        }
-                    }
-                },
-                # formatting all 4 cells
-                {
-                    "repeatCell": {
-                        "range": {
-                            "sheetId": sheet_id,
-                            "startRowIndex": 1,
-                            "endRowIndex": 2,
-                            "startColumnIndex": 0,
-                            "endColumnIndex": 4
-                        },
-                        "cell": {
-                            "userEnteredFormat": {
-                                "numberFormat" : {
-                                    "type": "CURRENCY",
-                                    "pattern": "#,##0.00[$₽-411]"
-                                },
-                                "backgroundColor" : {
-                                    "red": 1,
-                                    "green": 0.95,
-                                    "blue": 0.8
-                                },
-                                "textFormat": {
-                                    "fontSize": 11
-                                },
-                                "horizontalAlignment": "CENTER"
-                            }
-                        },
-                        "fields": "userEnteredFormat"
-                    }
-                },
-                {
-                    "updateBorders": {
-                        "range": {
-                            "sheetId": sheet_id,
-                            "startRowIndex": 1,
-                            "endRowIndex": 1 if with_bottom else 3,
-                            "startColumnIndex": 3,
-                            "endColumnIndex": 4
-                        },
-                        "right": {
-                            "style": "SOLID_MEDIUM"
-                        },
-                    }
-                },
-                {
-                    "updateBorders": {
-                        "range": {
-                            "sheetId": sheet_id,
-                            "startRowIndex": 1,
-                            "endRowIndex": 2,
-                            "startColumnIndex": 0,
-                            "endColumnIndex": 4
-                        },
-                        "bottom": None if not with_bottom else {"style": "SOLID_MEDIUM"}
-                    }
-                },
-                # sorting by date
-                {
-                    "sortRange": {
-                        "range": {
-                            "sheetId": sheet_id,
-                            "startRowIndex": 1,
-                            "startColumnIndex": 0,
-                            "endColumnIndex": 4,
-                        },
-                        "sortSpecs": [
-                            {
-                                "dimensionIndex": 0,
-                                "sortOrder": "DESCENDING"
-                            }
-                        ]
-                    }
-                },
-            ]
-        }
-    ).execute()
-
-
-def get_sheet_id_by_sheet_name(spreadsheet_id: str, sheet_name: str = None) -> str | None:
-    name = sheet_name if sheet_name else months[datetime.now().month]
-    sheets = service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
-    sheets = sheets['sheets']
-    for sheet in sheets:
-        if sheet['properties']['title'] == name: # ex. months[datetime.now().month] == Сентябрь
-        # if sheet['properties']['title'] == "Декабрь": # ex. months[datetime.now().month] == Сентябрь
-            return sheet['properties']['sheetId']
-    return None
-
-
-def get_transactions_count(spreadsheet_id: str) -> int:
-    arr = service.spreadsheets().values().get(
-        spreadsheetId=spreadsheet_id,
-        range=f"{months[datetime.now().month]}!B1:B"
-    ).execute().get("values")
-    return len(arr)-1
-
-
-def get_all_categories(spreadsheet_id: str) -> list:
-    arr = service.spreadsheets().values().get(
-        spreadsheetId=spreadsheet_id,
-        range=f"{months[datetime.now().month]}!B1:B"
-    ).execute().get("values")
-
-    return list(set([el[0] for el in arr]))
-
-
-def get_chart_spec(spreadsheet_id: str, sheet_id: int) -> dict:
-    return {
-        "title": "Диаграмма месячных расходов",
-        "pieChart": {
-            "legendPosition": "LABELED_LEGEND",
-            "threeDimensional": True,
-            "domain": {
-                "aggregateType": "SUM",
-                "sourceRange": {
-                    "sources": [
-                        {
-                            "sheetId": sheet_id,
-                            "startRowIndex": 1,
-                            "endRowIndex": get_transactions_count(spreadsheet_id)+2,
-                            "startColumnIndex": 1,
-                            "endColumnIndex": 2
-                        }
-                    ]
-                }
-            },
-            "series": {
-                "aggregateType": "SUM",
-                "sourceRange": {
-                    "sources": [{
-                        "sheetId": sheet_id,
-                        "startRowIndex": 1,
-                        "endRowIndex": get_transactions_count(spreadsheet_id)+2,
-                        "startColumnIndex": 2,
-                        "endColumnIndex": 3
-                    }]
-                }
+                }]
             }
-        }
-    }
+        ).execute()
 
+        service.spreadsheets().batchUpdate(
+            spreadsheetId=self.spreadsheet_id,
+            body=q.create_sheet__body(self.get_sheet_id_by_sheet_name(), [    
+                            {"userEnteredValue": {"stringValue": "Дата"}}, 
+                            {"userEnteredValue": {"stringValue": "Категория"}}, 
+                            {"userEnteredValue": {"stringValue": "Сумма"}}, 
+                            {"userEnteredValue": {"stringValue": "Примечания"}}, 
+                            {"userEnteredValue": {"stringValue": "Всего за месяц"}}, 
+                            {"userEnteredValue": {"stringValue": "Накопительный счет (начало месяца)"}},
+                            {"userEnteredValue": {"stringValue": "Накопительный счет (конец месяца)"}}
+                        ], self.header_bg_color, self.action_bg_color, self.additional_header_bg_color, self.additional_action_bg_color)
+        ).execute()
 
-def get_chart_id(spreadsheet_id: str) -> int:
-    arr = service.spreadsheets().get(
-        spreadsheetId=spreadsheet_id,
-        ranges=[f"{months[datetime.now().month]}!A1:Z100"]
-        # ranges=[f"Декабрь!A1:Z100"]
-    ).execute()
-    return arr.get("sheets")[0].get("charts")[0].get("chartId")
+    def write_new_action(self) -> None:
+        service.spreadsheets().batchUpdate(
+            spreadsheetId=self.spreadsheet_id,
+            body=q.write_new_action__body(self.sheet_id, self.amount, self.category, self.date_of_transaction, self.action_bg_color, self.with_bottom)
+        ).execute()
 
+    def get_chart_id(self) -> int:
+        arr = service.spreadsheets().get(
+            spreadsheetId=self.spreadsheet_id,
+            ranges=[f"{months[datetime.now().month]}!A1:Z100"]
+            # ranges=[f"Декабрь!A1:Z100"]
+        ).execute()
+        return arr.get("sheets")[0].get("charts")[0].get("chartId")
 
-def create_chart(spreadsheet_id: str):
-    sheet_id = get_sheet_id_by_sheet_name(spreadsheet_id=spreadsheet_id)
-    service.spreadsheets().batchUpdate(
-        spreadsheetId=spreadsheet_id,
-        body={
-            "requests": [{
-                "addChart": {
-                    "chart": {
-                        "spec": get_chart_spec(spreadsheet_id, sheet_id),
-                        "position": {
-                            "overlayPosition": {
-                                # ячейка, которая будет левым верхним углом диаграммы
-                                "anchorCell": {
-                                    "sheetId": sheet_id,
-                                    "rowIndex": 10,
-                                    "columnIndex": 5
+    def create_chart(self):
+        service.spreadsheets().batchUpdate(
+            spreadsheetId=self.spreadsheet_id,
+            body={
+                "requests": [{
+                    "addChart": {
+                        "chart": {
+                            "spec": q.get_chart_spec(self.sheet_id, self.get_transactions_count()+2),
+                            "position": {
+                                "overlayPosition": {
+                                    # ячейка, которая будет левым верхним углом диаграммы
+                                    "anchorCell": {
+                                        "sheetId": self.sheet_id,
+                                        "rowIndex": 10,
+                                        "columnIndex": 5
+                                    }
                                 }
                             }
                         }
                     }
+                }]
+            }
+        ).execute()
+
+    def update_chart(self):
+        service.spreadsheets().batchUpdate(
+            spreadsheetId=self.spreadsheet_id,
+            body={
+                "requests": [{
+                    "updateChartSpec": {
+                        "chartId": self.get_chart_id(),
+                        "spec": q.get_chart_spec(self.sheet_id, self.get_transactions_count()+2)
                 }
-            }]
-        }
-    ).execute()
-
-
-def update_chart(spreadsheet_id: str):
-    sheet_id = get_sheet_id_by_sheet_name(spreadsheet_id=spreadsheet_id)
-    service.spreadsheets().batchUpdate(
-        spreadsheetId=spreadsheet_id,
-        body={
-            "requests": [{
-                "updateChartSpec": {
-                    "chartId": get_chart_id(spreadsheet_id),
-                    "spec": get_chart_spec(spreadsheet_id, sheet_id)
-               }
-            }]
-        }
-    ).execute()
+                }]
+            }
+        ).execute()
 
     
+class Incomes(Table):
+    
+    '''
+    Class for Incomes table.
+    '''
+
+    def __init__(self, 
+                 spreadsheet_id: str, 
+                 amount: float = 0, 
+                 category: str = "CATEGORY", 
+                 date_of_transaction: str = "01.01.1970",
+                 sheet_name: str | None = None,  
+                 with_bottom: bool = False
+                ) -> None:
+        super().__init__(spreadsheet_id, amount, category, date_of_transaction, sheet_name, with_bottom)
+        self.header_bg_color = {
+            "red": 0.58,
+            "green": 0.77,
+            "blue": 0.49
+        }
+        self.action_bg_color = {
+            "red": 0.85,
+            "green": 0.92,
+            "blue": 0.83
+        }
+
+    def create_sheet(self):
+        service.spreadsheets().batchUpdate(
+            spreadsheetId=self.spreadsheet_id,
+            body={
+                "requests": [{
+                    # creating sheet
+                    'addSheet': {
+                        'properties': {
+                            'title': self.sheet_name
+                        }
+                    }
+                }]
+            }
+        ).execute()
+
+        service.spreadsheets().batchUpdate(
+            spreadsheetId=self.spreadsheet_id,
+            body=q.create_sheet__body(self.get_sheet_id_by_sheet_name(), [    
+                            {"userEnteredValue": {"stringValue": "Дата"}}, 
+                            {"userEnteredValue": {"stringValue": "Деятельность"}}, 
+                            {"userEnteredValue": {"stringValue": "Сумма"}}, 
+                            {"userEnteredValue": {"stringValue": "Примечания"}}, 
+                            {"userEnteredValue": {"stringValue": "Общий доход"}} 
+                        ], self.header_bg_color, self.action_bg_color, None)
+        ).execute()
+
+
+    def write_new_action(self) -> None:
+        service.spreadsheets().batchUpdate(
+            spreadsheetId=self.spreadsheet_id,
+            body=q.write_new_action__body(self.sheet_id, self.amount, self.category, self.date_of_transaction, self.action_bg_color, self.with_bottom)
+        ).execute()
