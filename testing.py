@@ -97,7 +97,7 @@ def create_chart(spreadsheet_id: str):
                                 "anchorCell": {
                                     "sheetId": sheet_id,
                                     "rowIndex": 10,
-                                    "columnIndex": 6
+                                    "columnIndex": 5
                                 }
                             }
                         }
@@ -537,6 +537,7 @@ def write_new_action(spreadsheet_id: str, amount: str, category: str, date_of_tr
         }
     ).execute()
 
-write_new_action(spreadsheet_id, "100", "Транспорт", "25.07.2023")
 
-# print(31.95771+0.40316341+0.44267165+0.59100377+0.31019123+0.45588529+0.15698007+0.57640924+0.32817803+0.16970323+0.04578118+0.21970422+0.12991144+0.05595179+0.01047318+0.17150071+0.59207518+0.55458135+0.59544107)
+# create_chart("1kuy63DWZbxY0GtsgNgsKlnfHFKE00G0G2WkZoHEjhpc")
+# write_new_action(spreadsheet_id, "100", "Транспорт", "25.07.2023")
+

@@ -37,5 +37,6 @@ async def set_commands(dispatcher):
 
 if __name__ == "__main__":
     db.init()
+    check_month()
     threading.Thread(target=scheduler, daemon=True).start()
     executor.start_polling(dp, skip_updates=True, on_startup=set_commands)

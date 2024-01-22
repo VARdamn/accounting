@@ -1,7 +1,6 @@
 import httplib2
 from googleapiclient import discovery
 from oauth2client.service_account import ServiceAccountCredentials
-import requests
 from datetime import datetime
 
 from misc import months
@@ -9,7 +8,6 @@ from misc import months
 
 CREDENTIALS_FILE = 'creds.json'
 
-# Авторизуемся и получаем service — экземпляр доступа к API
 credentials = ServiceAccountCredentials.from_json_keyfile_name(
     CREDENTIALS_FILE,
     ['https://www.googleapis.com/auth/spreadsheets',
@@ -308,7 +306,8 @@ def create_sheet(spreadsheet_id: str, sheet_name: str):
         }
     ).execute()
 
-def write_new_action(spreadsheet_id: str, amount: str, category: str, date_of_transaction: str) -> None:
+
+def write_new_action(spreadsheet_id: str, amount: str, category: str, date_of_transaction: str, with_bottom: bool = False) -> None:
     sheet_id = get_sheet_id_by_sheet_name(spreadsheet_id)
     service.spreadsheets().batchUpdate(
         spreadsheetId=spreadsheet_id,
@@ -345,6 +344,62 @@ def write_new_action(spreadsheet_id: str, amount: str, category: str, date_of_tr
                         }
                     }
                 },
+                # formatting all 4 cells
+                {
+                    "repeatCell": {
+                        "range": {
+                            "sheetId": sheet_id,
+                            "startRowIndex": 1,
+                            "endRowIndex": 2,
+                            "startColumnIndex": 0,
+                            "endColumnIndex": 4
+                        },
+                        "cell": {
+                            "userEnteredFormat": {
+                                "numberFormat" : {
+                                    "type": "CURRENCY",
+                                    "pattern": "#,##0.00[$₽-411]"
+                                },
+                                "backgroundColor" : {
+                                    "red": 1,
+                                    "green": 0.95,
+                                    "blue": 0.8
+                                },
+                                "textFormat": {
+                                    "fontSize": 11
+                                },
+                                "horizontalAlignment": "CENTER"
+                            }
+                        },
+                        "fields": "userEnteredFormat"
+                    }
+                },
+                {
+                    "updateBorders": {
+                        "range": {
+                            "sheetId": sheet_id,
+                            "startRowIndex": 1,
+                            "endRowIndex": 1 if with_bottom else 3,
+                            "startColumnIndex": 3,
+                            "endColumnIndex": 4
+                        },
+                        "right": {
+                            "style": "SOLID_MEDIUM"
+                        },
+                    }
+                },
+                {
+                    "updateBorders": {
+                        "range": {
+                            "sheetId": sheet_id,
+                            "startRowIndex": 1,
+                            "endRowIndex": 2,
+                            "startColumnIndex": 0,
+                            "endColumnIndex": 4
+                        },
+                        "bottom": None if not with_bottom else {"style": "SOLID_MEDIUM"}
+                    }
+                },
                 # sorting by date
                 {
                     "sortRange": {
@@ -362,68 +417,6 @@ def write_new_action(spreadsheet_id: str, amount: str, category: str, date_of_tr
                         ]
                     }
                 },
-                # formatting all 4 cells
-                {
-                    "repeatCell": {
-                        "range": {
-                            "sheetId": sheet_id,
-                            "startRowIndex": 1,
-                            "endRowIndex": 2,
-                            "startColumnIndex": 0,
-                            "endColumnIndex": 4
-                        },
-                        "cell": {
-                        "userEnteredFormat": {
-                                "numberFormat" : {
-                                "type": "CURRENCY",
-                                "pattern": "#,##0.00[$₽-411]"
-                            },
-                            "backgroundColor" : {
-                                "red": 1,
-                                "green": 0.95,
-                                "blue": 0.8
-                            },
-                            "textFormat": {
-                                "fontSize": 11
-                            }
-                        }
-                        },
-                        "fields": "userEnteredFormat(numberFormat,backgroundColor,textFormat)"
-                    }
-                },
-                # setting alignment for сумма
-                {
-                    "repeatCell": {
-                        "range": {
-                            "sheetId": sheet_id,
-                            "startRowIndex": 1,
-                            "endRowIndex": 2,
-                            "startColumnIndex": 2,
-                            "endColumnIndex": 3
-                        },
-                        "cell": {
-                            "userEnteredFormat": {
-                                "horizontalAlignment" : "CENTER"
-                            }
-                        },
-                        "fields": "userEnteredFormat(horizontalAlignment)"
-                    }
-                },
-                # границы
-                {
-                    "updateBorders": {
-                        "range": {
-                            "sheetId": sheet_id,
-                            "startRowIndex": 1,
-                            "endRowIndex": 3,
-                            "startColumnIndex": 3,
-                            "endColumnIndex": 4
-                        },
-                        "right": {
-                            "style": "SOLID_MEDIUM"
-                        }
-                    }
-                }
             ]
         }
     ).execute()
@@ -435,6 +428,7 @@ def get_sheet_id_by_sheet_name(spreadsheet_id: str, sheet_name: str = None) -> s
     sheets = sheets['sheets']
     for sheet in sheets:
         if sheet['properties']['title'] == name: # ex. months[datetime.now().month] == Сентябрь
+        # if sheet['properties']['title'] == "Декабрь": # ex. months[datetime.now().month] == Сентябрь
             return sheet['properties']['sheetId']
     return None
 
@@ -496,6 +490,7 @@ def get_chart_id(spreadsheet_id: str) -> int:
     arr = service.spreadsheets().get(
         spreadsheetId=spreadsheet_id,
         ranges=[f"{months[datetime.now().month]}!A1:Z100"]
+        # ranges=[f"Декабрь!A1:Z100"]
     ).execute()
     return arr.get("sheets")[0].get("charts")[0].get("chartId")
 
@@ -515,7 +510,7 @@ def create_chart(spreadsheet_id: str):
                                 "anchorCell": {
                                     "sheetId": sheet_id,
                                     "rowIndex": 10,
-                                    "columnIndex": 6
+                                    "columnIndex": 5
                                 }
                             }
                         }
@@ -535,7 +530,7 @@ def update_chart(spreadsheet_id: str):
                 "updateChartSpec": {
                     "chartId": get_chart_id(spreadsheet_id),
                     "spec": get_chart_spec(spreadsheet_id, sheet_id)
-                }
+               }
             }]
         }
     ).execute()

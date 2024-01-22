@@ -76,9 +76,9 @@ async def cmd_expense(message: types.Message, state=None):
             datetime(datetime.now().year, int(date_data[1]), int(date_data[0])).strftime("%d.%m.%Y")
     
     spreadsheet_id = db.get_user_spreadsheet_id(message.chat.id, _type="expenses")
-    # add new transaction to sheet
+    # add first transaction to sheet
     if google_sheets.get_transactions_count(spreadsheet_id) < 1:
-        google_sheets.write_new_action(spreadsheet_id, amount, category, date_of_transaction)
+        google_sheets.write_new_action(spreadsheet_id, amount, category, date_of_transaction, with_bottom=True)
         google_sheets.create_chart(spreadsheet_id)
     else:
         google_sheets.write_new_action(spreadsheet_id, amount, category, date_of_transaction)
@@ -105,10 +105,10 @@ async def cmd_income(message: types.Message, state=None):
     # add new transaction to sheet
     if google_sheets.get_transactions_count(spreadsheet_id) < 1:
         google_sheets.write_new_action(spreadsheet_id, amount, category, date_of_transaction)
-        print("creating chart")
+        # print("creating chart")
         google_sheets.create_chart(spreadsheet_id)
     else:
         google_sheets.write_new_action(spreadsheet_id, amount, category, date_of_transaction)
         print("updating chart")
-        google_sheets.update_chart(spreadsheet_id)
+        # google_sheets.update_chart(spreadsheet_id)
     await bot.send_message(message.chat.id, "✅")
