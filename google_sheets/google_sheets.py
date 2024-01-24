@@ -32,8 +32,7 @@ class Table:
         self.amount = amount
         self.category = category
         self.date_of_transaction = date_of_transaction
-        self.sheet_name = "Февраль"
-        # self.sheet_name = sheet_name if sheet_name else months[datetime.now().month]
+        self.sheet_name = sheet_name if sheet_name else months[datetime.now().month]
         self.with_bottom = with_bottom
         self.sheet_id = self.get_sheet_id_by_sheet_name()
 

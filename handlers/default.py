@@ -78,14 +78,12 @@ async def cmd_expense(message: types.Message, state=None):
     spreadsheet_id = db.get_user_spreadsheet_id(message.chat.id, _type="expenses")
     table = google_sheets.Expenses(spreadsheet_id, float(amount), category, date_of_transaction)
     # add first transaction to sheet
-    if google_sheets.get_transactions_count(spreadsheet_id) < 1:
-        table = google_sheets.Expenses(spreadsheet_id, float(amount), category, date_of_transaction)
-        table.write_new_action()
+    if table.get_transactions_count() < 1:
+        table.with_bottom = True
         table.create_chart()
     else:
-        table = google_sheets.Expenses(spreadsheet_id, float(amount), category, date_of_transaction)
-        table.write_new_action()
         table.update_chart()
+    table.write_new_action()
     await bot.send_message(message.chat.id, "✅")
 
 
@@ -104,14 +102,10 @@ async def cmd_income(message: types.Message, state=None):
             if len(date_data) == 1 else \
             datetime(datetime.now().year, int(date_data[1]), int(date_data[0])).strftime("%d.%m.%Y")
     
-    spreadsheet_id = db.get_user_spreadsheet_id(message.chat.id)
-    # add new transaction to sheet
-    if google_sheets.get_transactions_count(spreadsheet_id) < 1:
-        google_sheets.write_new_action(spreadsheet_id, amount, category, date_of_transaction)
-        # print("creating chart")
-        google_sheets.create_chart(spreadsheet_id)
-    else:
-        google_sheets.write_new_action(spreadsheet_id, amount, category, date_of_transaction)
-        print("updating chart")
-        # google_sheets.update_chart(spreadsheet_id)
+    spreadsheet_id = db.get_user_spreadsheet_id(message.chat.id, _type="incomes")
+    table = google_sheets.Incomes(spreadsheet_id, float(amount), category, date_of_transaction)
+    # add first transaction to sheet
+    if table.get_transactions_count() < 1:
+        table.with_bottom = True
+    table.write_new_action()
     await bot.send_message(message.chat.id, "✅")
