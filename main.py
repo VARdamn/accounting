@@ -14,10 +14,12 @@ from google_sheets import google_sheets
 def check_month():
     # if month has changed - creating new sheet
     if (datetime.date.today()-datetime.timedelta(days=1)).month + 1 == (datetime.date.today()).month:
-        for spreadsheet_id in db.get_all_users_spreadsheet_ids():
+        for spreadsheet_id in db.get_all_expenses_spreadsheet_ids():
             google_sheets.Expenses(spreadsheet_id).create_sheet()
+        
+        for spreadsheet_id in db.get_all_incomes_spreadsheet_ids():
             google_sheets.Incomes(spreadsheet_id).create_sheet()
-            
+                
 
 def scheduler():
     schedule.every().day.at("01:00").do(check_month) 

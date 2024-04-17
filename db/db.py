@@ -59,12 +59,29 @@ def get_user_spreadsheet_id(user_id: str, _type: str) -> str | None:
         connection.close()
 
 
-def get_all_users_spreadsheet_ids() -> list:
+def get_all_incomes_spreadsheet_ids() -> list:
     try:
         connection = conn()
-        # connection.row_factory = lambda cursor, row: row[0]
         cursor = connection.cursor()
-        cursor.execute(f"SELECT expenses_spreadsheet_id, incomes_spreadsheet_id from users")
+        cursor.execute(f"SELECT incomes_spreadsheet_id from users")
+        lst = []
+        for el in cursor.fetchall():
+            for item in el:
+                if not item:
+                    continue
+                lst.append(item)
+        return lst
+    except:
+        return []
+    finally:
+        connection.close()
+
+
+def get_all_expenses_spreadsheet_ids() -> list:
+    try:
+        connection = conn()
+        cursor = connection.cursor()
+        cursor.execute(f"SELECT expenses_spreadsheet_id from users")
         lst = []
         for el in cursor.fetchall():
             for item in el:
