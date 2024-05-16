@@ -7,6 +7,7 @@ from misc import months
 import google_sheets.queries as q
 
 CREDENTIALS_FILE = 'creds.json'
+BASIC_DATE = datetime(1899, 12, 30)
 
 credentials = ServiceAccountCredentials.from_json_keyfile_name(
     CREDENTIALS_FILE,
@@ -31,7 +32,8 @@ class Table:
         self.spreadsheet_id = spreadsheet_id
         self.amount = amount
         self.category = category
-        self.date_of_transaction = date_of_transaction
+        # self.date_of_transaction = date_of_transaction
+        self.date_of_transaction = (datetime.strptime(date_of_transaction, '%d.%m.%Y') - BASIC_DATE).days
         self.sheet_name = sheet_name if sheet_name else months[datetime.now().month]
         self.with_bottom = with_bottom
         self.sheet_id = self.get_sheet_id_by_sheet_name()
@@ -41,7 +43,6 @@ class Table:
         sheets = sheets['sheets']
         for sheet in sheets:
             if sheet['properties']['title'] == self.sheet_name: # ex. months[datetime.now().month] == Сентябрь
-            # if sheet['properties']['title'] == "Декабрь": # ex. months[datetime.now().month] == Сентябрь
                 return sheet['properties']['sheetId']
         return None
 

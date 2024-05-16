@@ -291,7 +291,7 @@ def create_sheet__body(
 def write_new_action__body(sheet_id: int, 
                            amount: float, 
                            category: str, 
-                           date_of_transaction: str,
+                           date_of_transaction: int,
                            bg_color: dict, 
                            with_bottom: bool = False) -> dict:
     '''
@@ -318,7 +318,7 @@ def write_new_action__body(sheet_id: int,
                     "fields": "*",
                     "rows": {
                         "values": [    
-                            {"userEnteredValue": {"stringValue": date_of_transaction}}, 
+                            {"userEnteredValue": {"numberValue": date_of_transaction}}, 
                             {"userEnteredValue": {"stringValue": category}}, 
                             {"userEnteredValue": {"numberValue": float(amount)}}, 
                         ]
@@ -345,6 +345,31 @@ def write_new_action__body(sheet_id: int,
                             "numberFormat" : {
                                 "type": "CURRENCY",
                                 "pattern": "#,##0.00[$₽-411]"
+                            },
+                            "backgroundColor" : bg_color,
+                            "textFormat": {
+                                "fontSize": 11
+                            },
+                            "horizontalAlignment": "CENTER"
+                        }
+                    },
+                    "fields": "userEnteredFormat"
+                }
+            },
+            {
+                "repeatCell": {
+                    "range": {
+                        "sheetId": sheet_id,
+                        "startRowIndex": 1,
+                        "endRowIndex": 2,
+                        "startColumnIndex": 0,
+                        "endColumnIndex": 1
+                    },
+                    "cell": {
+                        "userEnteredFormat": {
+                            "numberFormat" : {
+                                "type": "DATE",
+                                "pattern": "dd.mm.yyyy"
                             },
                             "backgroundColor" : bg_color,
                             "textFormat": {
