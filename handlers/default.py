@@ -87,7 +87,7 @@ async def cmd_expense(message: types.Message, state=None):
     await bot.send_message(message.chat.id, "✅")
 
 
-@dp.message_handler(commands=['крупная'], state="*", chat_type=types.ChatType.PRIVATE)
+@dp.message_handler(commands=['особая'], state="*", chat_type=types.ChatType.PRIVATE)
 async def cmd_big_expense(message: types.Message, state=None):
     args = message.get_args().split()
 
@@ -103,7 +103,7 @@ async def cmd_big_expense(message: types.Message, state=None):
             datetime(datetime.now().year, int(date_data[1]), int(date_data[0])).strftime("%d.%m.%Y")
     
     spreadsheet_id = db.get_user_spreadsheet_id(message.chat.id, _type="expenses")
-    table = google_sheets.Expenses(spreadsheet_id, float(amount), category, date_of_transaction, sheet_name='Крупные траты')
+    table = google_sheets.Expenses(spreadsheet_id, float(amount), category, date_of_transaction, sheet_name='Особые траты')
     table.write_new_action()
     await bot.send_message(message.chat.id, "✅")
 
