@@ -1,6 +1,5 @@
-aiogram==2.22.1
+aiogram==3.22.0
 python-dotenv
-datetime
 cachetools
 google-api-python-client
 google-auth
@@ -12,4 +11,3 @@ pyasn1-modules
 rsa
 six
 uritemplate
-schedule

@@ -8,8 +8,8 @@ def create_sheet__body(
         values: list, 
         header_bg_color: dict, 
         action_bg_color: dict, 
-        additional_header_bg_color: dict | None = None,
-        additional_action_bg_color: dict | None = None
+        additional_header_bg_color: dict = None,
+        additional_action_bg_color: dict = None
         ) -> dict:
     '''
     Returns body for create_sheet() function of Class Expenses.
@@ -475,4 +475,3 @@ def get_chart_spec(sheet_id: int, transactions_count: int) -> dict:
 #     '''
 #     Returns body for write_new_action() function for Incomes Class.
 #     '''
-

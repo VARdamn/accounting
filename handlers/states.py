@@ -1,10 +1,9 @@
-from aiogram.dispatcher.filters.state import State, StatesGroup
+from aiogram.fsm.state import State, StatesGroup
 
 
-class addExpensesSpreadsheet(StatesGroup):
+class AddExpensesSpreadsheetState(StatesGroup):
     spreadsheet_id = State()
 
 
-class addIncomesSpreadsheet(StatesGroup):
+class AddIncomesSpreadsheetState(StatesGroup):
     spreadsheet_id = State()
-

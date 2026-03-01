@@ -1,45 +1,43 @@
-from aiogram import executor
-from aiogram import types
-import schedule
-import time
-import datetime
-import threading
+import asyncio
+import logging
 
-import keyboards, handlers # DON'T REMOVE
-from misc import dp, bot, months
+from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.types import BotCommand
+from aiogram.fsm.storage.memory import MemoryStorage
+
+from config import config
 from db import db
-from google_sheets import google_sheets
+from handlers import register_handlers
+from services.scheduler import daily_sheets_maintenance_task
+from services.sheets_manager import ensure_all_user_month_sheets
 
 
-def check_month():
-    # if month has changed - creating new sheet
-    if (datetime.date.today()-datetime.timedelta(days=1)).month + 1 == (datetime.date.today()).month:
-        for spreadsheet_id in db.get_all_expenses_spreadsheet_ids():
-            google_sheets.Expenses(spreadsheet_id).create_sheet()
-        
-        for spreadsheet_id in db.get_all_incomes_spreadsheet_ids():
-            google_sheets.Incomes(spreadsheet_id).create_sheet()
-                
-
-def scheduler():
-    schedule.every().day.at("01:00").do(check_month) 
-    while True:
-        schedule.run_pending()
-        time.sleep(10)
-
-
-async def set_commands(dispatcher):
+async def set_commands(bot: Bot) -> None:
     commands = [
-        types.BotCommand(command="start", description="Start bot"),
-        types.BotCommand(command="help", description="Get commands list with description"),
-        types.BotCommand(command="add_expenses_spreadsheet", description="Добавить таблицу расходов"),
-        types.BotCommand(command="add_incomes_spreadsheet", description="Добавить таблицу доходов"),
+        BotCommand(command='start', description='Start bot'),
+        BotCommand(command='help', description='Get commands list with description'),
+        BotCommand(command='add_expenses_spreadsheet', description='Добавить таблицу расходов'),
+        BotCommand(command='add_incomes_spreadsheet', description='Добавить таблицу доходов'),
     ]
     await bot.set_my_commands(commands)
 
 
-if __name__ == "__main__":
+async def main() -> None:
+    logging.basicConfig(level=logging.INFO)
+
+    bot = Bot(token=config['TOKEN'], default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    dispatcher = Dispatcher(storage=MemoryStorage())
+    register_handlers(dispatcher)
+
     db.init()
-    check_month()
-    threading.Thread(target=scheduler, daemon=True).start()
-    executor.start_polling(dp, skip_updates=True, on_startup=set_commands)
+    ensure_all_user_month_sheets()
+    asyncio.create_task(daily_sheets_maintenance_task())
+
+    await set_commands(bot)
+    await dispatcher.start_polling(bot, skip_updates=True)
+
+
+if __name__ == '__main__':
+    asyncio.run(main())

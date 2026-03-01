@@ -1,95 +1,81 @@
-import sqlite3
 import os
+import sqlite3
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-db_path = os.path.join(BASE_DIR, "user_sheets.db")
+DB_PATH = os.path.join(BASE_DIR, 'user_sheets.db')
 
 
-def init():
-    db = sqlite3.connect(db_path)
-    sql = db.cursor()
-    sql.execute('''CREATE TABLE IF NOT EXISTS users (
-            user_id TEXT PRIMARY KEY,
-            expenses_spreadsheet_id TEXT, 
-            incomes_spreadsheet_id TEXT) 
-    ''')
-    db.commit()
-    print('Initialized Users DB')
+def init() -> None:
+    with sqlite3.connect(DB_PATH) as connection:
+        cursor = connection.cursor()
+        cursor.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS users (
+                user_id TEXT PRIMARY KEY,
+                expenses_spreadsheet_id TEXT,
+                incomes_spreadsheet_id TEXT
+            )
+            '''
+        )
+        connection.commit()
 
 
-def conn():
-    return sqlite3.connect(db_path)
+def conn() -> sqlite3.Connection:
+    return sqlite3.connect(DB_PATH)
 
 
 def is_user_in_db(user_id: str) -> bool:
-    try:
-        connection = conn()
+    with conn() as connection:
         cursor = connection.cursor()
-        cursor.execute(f"SELECT user_id from users WHERE user_id = '{user_id}'")
-        return True if cursor.fetchone()[0] else False
-    except:
-        return False
-    finally:
-        connection.close()
+        cursor.execute('SELECT 1 FROM users WHERE user_id = ?', (user_id,))
+        return cursor.fetchone() is not None
 
 
-def add_user_sheet(user_id: str, spreadsheet_id: str, _type: str) -> bool:
-    try:
-        connection = conn()
+def add_user_sheet(user_id: str, spreadsheet_id: str, sheet_type: str) -> bool:
+    if sheet_type not in {'expenses', 'incomes'}:
+        raise ValueError('Invalid sheet type')
+
+    column = f'{sheet_type}_spreadsheet_id'
+    with conn() as connection:
         cursor = connection.cursor()
         if not is_user_in_db(user_id):
-            cursor.execute(f"INSERT INTO users (`user_id`, `{_type}_spreadsheet_id`) VALUES ('{user_id}', '{spreadsheet_id}')")
+            cursor.execute(
+                f'INSERT INTO users (user_id, {column}) VALUES (?, ?)',
+                (user_id, spreadsheet_id),
+            )
         else:
-            cursor.execute(f"UPDATE users SET `{_type}_spreadsheet_id` = '{spreadsheet_id}' WHERE user_id = '{user_id}'")
+            cursor.execute(
+                f'UPDATE users SET {column} = ? WHERE user_id = ?',
+                (spreadsheet_id, user_id),
+            )
         connection.commit()
         return True
-    finally:
-        connection.close()
 
 
-def get_user_spreadsheet_id(user_id: str, _type: str) -> str | None:
-    try:
-        connection = conn()
+def get_user_spreadsheet_id(user_id: str, sheet_type: str) -> str | None:
+    if sheet_type not in {'expenses', 'incomes'}:
+        raise ValueError('Invalid sheet type')
+
+    with conn() as connection:
         cursor = connection.cursor()
-        cursor.execute(f"SELECT {_type}_spreadsheet_id FROM users WHERE user_id = '{user_id}'")
-        return cursor.fetchone()[0]
-    except:
-        return None
-    finally:
-        connection.close()
+        cursor.execute(
+            f'SELECT {sheet_type}_spreadsheet_id FROM users WHERE user_id = ?',
+            (user_id,),
+        )
+        row = cursor.fetchone()
+        return row[0] if row and row[0] else None
 
 
-def get_all_incomes_spreadsheet_ids() -> list:
-    try:
-        connection = conn()
+def _get_all_spreadsheet_ids(column: str) -> list[str]:
+    with conn() as connection:
         cursor = connection.cursor()
-        cursor.execute(f"SELECT incomes_spreadsheet_id from users")
-        lst = []
-        for el in cursor.fetchall():
-            for item in el:
-                if not item:
-                    continue
-                lst.append(item)
-        return lst
-    except:
-        return []
-    finally:
-        connection.close()
+        cursor.execute(f'SELECT {column} FROM users')
+        return [row[0] for row in cursor.fetchall() if row[0]]
 
 
-def get_all_expenses_spreadsheet_ids() -> list:
-    try:
-        connection = conn()
-        cursor = connection.cursor()
-        cursor.execute(f"SELECT expenses_spreadsheet_id from users")
-        lst = []
-        for el in cursor.fetchall():
-            for item in el:
-                if not item:
-                    continue
-                lst.append(item)
-        return lst
-    except:
-        return []
-    finally:
-        connection.close()
+def get_all_incomes_spreadsheet_ids() -> list[str]:
+    return _get_all_spreadsheet_ids('incomes_spreadsheet_id')
+
+
+def get_all_expenses_spreadsheet_ids() -> list[str]:
+    return _get_all_spreadsheet_ids('expenses_spreadsheet_id')
